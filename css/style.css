@@ -1,0 +1,1502 @@
+/* ============================================================================
+   style.css — оформление.
+   Дизайн: одноколоночная редакторская вёрстка (сдержанная типографика,
+   работы списком, не плиткой). Моушн по правилам Emil Kowalski:
+     · только transform и opacity;
+     · сильные кастомные кривые, ease-in не используется нигде;
+     · UI-анимации < 300 мс; press-feedback scale(.98);
+     · transitions, не keyframes (их можно перехватить на полпути);
+     · hover закрыт за (hover:hover), моушн уважает prefers-reduced-motion.
+   Палитра и ритм целиком в :root — менять только там.
+   ========================================================================== */
+
+/* ── ШРИФТ ────────────────────────────────────────────────────────────────
+   Задача была «как SF у Apple». Сам SF Pro встраивать в сайт нельзя —
+   лицензия Apple это запрещает, легального способа нет. Поэтому:
+     · `-apple-system` стоит ПЕРВЫМ — на macOS/iOS браузер отдаёт настоящий SF;
+     · всем остальным достаётся Inter, спроектированный метрически близким к SF.
+   Inter лежит своим файлом рядом, а НЕ подключается с Google Fonts: у сайта
+   заявлено «ноль внешних доменов», и запрос на сторонний хост это ломает.
+   Взят вариант Inter с осью оптического размера и закреплён на opsz 18 —
+   это ровно тот вид, что в файле Inter_18pt-Medium.ttf на рабочем столе,
+   но одним переменным файлом на ВСЕ начертания: статичный TTF дал бы только
+   Medium, и заголовки получили бы поддельный жирный вместо настоящего.
+   Файл переменный (одна штука на все начертания) — отсюда font-weight:100 900.
+   font-display:swap — текст виден сразу системным шрифтом и подменяется,
+   без пустого экрана на медленной сети. */
+@font-face{
+  font-family:'Inter'; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url('../fonts/inter-cyrillic.woff2') format('woff2');
+  unicode-range:U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face{
+  font-family:'Inter'; font-style:normal; font-weight:100 900; font-display:swap;
+  src:url('../fonts/inter-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ── ПАЛИТРА ──────────────────────────────────────────────────────────────
+   По умолчанию сайт ТЁМНЫЙ. Светлая включается переключателем в шапке
+   (атрибут data-theme="light" на <html>, выбор запоминается в браузере).
+   Правило: цвет нигде больше не задаётся, только здесь. */
+:root{
+  color-scheme:dark;
+
+  /* поверхности */
+  --bg:#0d0f12;
+  --bg-2:#14171b;
+  --ink:#eceef1;
+  --ink-2:#98a1ac;
+  /* 5.20:1 на основном фоне и 4.87:1 на bg-2. Прежний #6b7480 давал 4.05 —
+     ниже нормы WCAG 4.5:1, а на этом цвете держатся подписи, метки
+     и телеграм-хэндл. Проверено расчётом по обоим фонам темы. */
+  --ink-3:#7c8693;
+  --line:#232830;
+  --line-2:#30363f;
+  --accent:#54d3af;
+  --accent-2:#e0a76a;
+  --modal-back:rgba(0,0,0,.66);
+
+  /* типографика */
+  --sans:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+
+  /* ритм */
+  --col:680px;          /* основная колонка */
+  --col-wide:940px;     /* блоки, которым нужно шире */
+  /* Рама держит КОНТЕНТ читаемым, а во всю ширину идут ПОЛОСЫ ФОНА
+     (#services, #partnership, .contact) — страница читается полноэкранной,
+     но строка прозы остаётся 60-75 знаков. Замер прошлого захода: при раме
+     2000px на 1560 между текстом и рейкой цифр висело ~500px пустоты,
+     на 2560 — вдвое больше. Пустота не продаёт. */
+  --shell:min(1240px, 94vw);
+  --pad:24px;
+
+  /* моушн */
+  --ease-out:cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out:cubic-bezier(0.77, 0, 0.175, 1);
+  --t-press:140ms;
+  --t-hover:180ms;
+  --t-modal:240ms;
+}
+
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#fbfaf8;
+  --bg-2:#f4f2ee;
+  --ink:#16181c;
+  --ink-2:#5c6470;
+  /* 5.16:1 на основном фоне и 4.69:1 на bg-2 — проходит на ОБОИХ, а секция
+     контакта теперь идёт полосой на bg-2. Прежний #8b939e давал 2.98:1:
+     сайт, который текстом обещает «доступность с первого коммита», сам
+     её не проходил. */
+  --ink-3:#656b73;
+  --line:#d9d4c8;   /* было #e5e1d9 — контраст к фону 1.25, линии почти не видно */
+  --line-2:#d6d1c6;
+  --accent:#166a56;
+  /* 5.26:1 на bg и 4.91:1 на bg-2 — проходит на ОБОИХ фонах. Промежуточный
+     #9e6534 давал на сером 4.30, то есть ниже нормы; исходный #b8763d — 3.53.
+     Этим цветом набраны подписи «Стека». */
+  --accent-2:#945c2c;
+  --modal-back:rgba(10,12,14,.55);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:96px; -webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--sans); font-size:16px; line-height:1.6; letter-spacing:-0.011em;
+  /* закрепляем оптический размер 18 — иначе браузер подбирает его сам
+     по кеглю текста, и мелкие подписи «расползаются» шире, чем в образце */
+  font-optical-sizing:none; font-variation-settings:'opsz' 18;
+  -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+}
+img{max-width:100%; display:block}
+a{color:inherit}
+h1,h2,h3{margin:0; font-weight:600; letter-spacing:-0.025em; line-height:1.15}
+
+.col{max-width:var(--col); margin:0 auto; padding:0 var(--pad)}
+.col-wide{max-width:var(--col-wide); margin:0 auto; padding:0 var(--pad)}
+
+/* ═══════════════ ШИРОКИЙ ЭКРАН: страница занимает всю ширину ═══════════════
+   Правило, которое нельзя нарушать: РАСТЯГИВАЕТСЯ НЕ ТЕКСТ, А РАМА ВОКРУГ.
+   Строка прозы остаётся ≤68 символов (все max-width в ch ниже по файлу
+   не трогаются) — иначе читать невозможно. Ширину забирают: рейка
+   заголовка слева, вторая колонка списков, крупные превью работ.
+   Всё это живёт только здесь: телефон и планшет получают прежнюю
+   одноколоночную вёрстку без единого изменения. */
+/* Порог 940, а не 1100: на 1024px и на половине FullHD-экрана страница
+   иначе оставалась старой узкой колонкой 680px — то есть ровно тем, на
+   что была жалоба. 940 — минимум, при котором рейка 230px + колонка
+   текста ещё дают читаемую строку. */
+@media (min-width:940px){
+  /* Шапку и подвал двигаем ЧЕРЕЗ ПЕРЕМЕННУЮ, а не отдельным правилом:
+     .topbar-in{max-width:var(--col-wide)} объявлен ниже по файлу, и при
+     равной специфичности он бы выиграл у любого правила, написанного здесь. */
+  :root{ --pad:clamp(28px, 4.4vw, 76px); --col-wide:var(--shell); }
+
+  /* Секция = рейка с номером и заголовком слева + контент справа.
+     sticky здесь СОЗНАТЕЛЬНО не ставится: на .sec-head висит класс
+     .reveal с transform, а transform создаёт containing block и
+     ломает position:sticky — проверено, это была бы гарантированная
+     поломка ради украшения. */
+  .sec > .col{
+    max-width:var(--shell);
+    display:grid;
+    grid-template-columns:minmax(200px, 260px) minmax(0, 1fr);
+    column-gap:clamp(36px, 3.6vw, 72px);
+    align-items:start;
+  }
+  .sec{ padding:92px 0 72px }   /* воздуха сверху, иначе заголовок липнет к предыдущей секции */
+  .sec > .col > .sec-head{ grid-column:1; margin-bottom:0 }
+  .sec > .col > :not(.sec-head){ grid-column:2 }
+  .sec .sub{ max-width:34ch }            /* в узкой рейке строка короче */
+  /* Линия-хвост в узкой рейке лишняя, но взамен номер раздела становится
+     якорем взгляда: цветной и крупнее — иначе на широком экране шапка
+     секции остаётся вообще без маркера и разделы слипаются. */
+  .sec-head .label::after{ display:none }
+  .sec-head .label [data-sec-num]{ color:var(--accent); font-size:.86rem; font-weight:600 }
+
+  /* Списки из четырёх пунктов — в две колонки. Секция от этого
+     становится вдвое короче, поэтому ниже подправлен и scrollspy. */
+  .svc-list{ display:grid; grid-template-columns:1fr 1fr; column-gap:clamp(32px,3.4vw,64px) }
+  /* В две колонки верхний ряд — это ДВА первых пункта, а не один:
+     иначе слева линии нет, справа есть, и ряд выглядит косым. */
+  .svc-item:nth-child(-n+2){ border-top:none; padding-top:0 }
+  .pt-list, .promo-list, .stack-list{ grid-template-columns:1fr 1fr; column-gap:clamp(32px,3.4vw,64px) }
+  .pt-row:nth-child(-n+2),
+  .promo-row:nth-child(-n+2),
+  .stack-row:nth-child(-n+2){ border-top:none; padding-top:0 }
+  /* Именно grid, а не columns: columns заполняет колонки ПОСЛЕДОВАТЕЛЬНО
+     (сначала левую до низа, потом правую), из-за чего у нумерованного
+     списка ломается порядок чтения и левая колонка обрывается раньше.
+     Сетка читается слева направо: 1-2, 3-4, 5. */
+  .why-list{ display:grid; grid-template-columns:1fr 1fr;
+             column-gap:clamp(32px,3.4vw,64px); align-items:start }
+  .why-item:nth-child(-n+2){ border-top:none; padding-top:0 }
+
+  /* Работы: превью 104px — это марка, а не работа. */
+  .work{ grid-template-columns:300px minmax(0,1fr) auto; gap:30px }
+
+  /* Первый экран: текст слева, цифры вертикальной рейкой справа. */
+  /* Третья пустая колонка убрана вместе с рамой 2000px: она существовала
+     только чтобы поглотить лишнюю ширину. При раме 1240 текст и рейка цифр
+     заполняют её целиком, дыры в середине нет. Строку держат max-width в ch
+     у .role/.tagline/.claim, а не ширина колонки. */
+  .hero .col{
+    max-width:var(--shell);
+    display:grid;
+    grid-template-columns:minmax(0, 1fr) minmax(210px, 280px);
+    column-gap:clamp(36px, 3.6vw, 72px);
+    align-items:start;
+  }
+  .hero .col > :not(.stats){ grid-column:1 }
+  .hero .stats{
+    grid-column:2; grid-row:1 / span 7;
+    flex-direction:column; align-items:flex-start; gap:24px;
+    border-top:none; border-left:1px solid var(--line);
+    padding:4px 0 4px 26px; margin:0;
+  }
+  .hero h1{ font-size:clamp(3rem, 5.4vw, 4.6rem) }
+  .stats span{ max-width:24ch }   /* в рейке 300px подпись иначе рвётся на три строки */
+
+  /* Ритм: секции чередуются фоном во всю ширину. Без этого девять секций
+     подряд идут одинаковой серой лапшой из волосяных линий — именно от
+     этого страница читается как «скучная», а не от палитры. */
+  #services, #partnership{ background:var(--bg-2) }
+  /* CTA не должна висеть на самом срезе экрана 1366×768 */
+  .hero{ padding:clamp(52px, 7vh, 92px) 0 76px }
+
+  /* Финал — единственная полноширинная полоса на сайте, она даёт вес. */
+  .contact{ background:var(--bg-2) }
+  .contact > .col{ display:block; max-width:var(--col) }
+}
+
+.skip{position:absolute; left:-9999px}
+.skip:focus{left:12px; top:12px; z-index:99; background:var(--ink); color:var(--bg); padding:9px 14px; border-radius:8px}
+:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:4px}
+
+/* мелкий моноширинный ярлык — фирменная деталь этой вёрстки */
+.label{
+  font-family:var(--mono); font-size:.7rem; font-weight:500;
+  letter-spacing:.14em; text-transform:uppercase; color:var(--ink-3);
+}
+
+/* ─────────────────────────── шапка ─────────────────────────── */
+.topbar{
+  position:sticky; top:0; z-index:60;
+  background:color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter:saturate(180%) blur(14px);
+  border-bottom:1px solid transparent;
+  transition:border-color var(--t-hover) ease;
+}
+.topbar.is-stuck{border-bottom-color:var(--line)}
+.topbar-in{
+  max-width:var(--col-wide); margin:0 auto; padding:0 var(--pad);
+  height:60px; display:flex; align-items:center; gap:22px;
+}
+.logo{display:flex; align-items:baseline; gap:8px; text-decoration:none; flex:0 0 auto}
+.logo-mark{font-family:var(--mono); font-size:.78rem; font-weight:600; color:var(--accent); letter-spacing:.04em}
+.logo-text{font-size:.92rem; font-weight:600; letter-spacing:-.015em}
+
+
+/* ───────────────── плавающий навигатор разделов ─────────────────
+   Паттерн со скрина ШРС: пилюля-сегментированный переключатель поверх
+   контента. Здесь она ещё и scrollspy — активный раздел подсвечивается сам.
+   Живёт внизу по центру: на телефоне это единственная навигация (в шапке
+   для неё нет места), на десктопе не спорит с логотипом и переключателями. */
+.pillnav{
+  position:fixed; left:50%; bottom:18px; z-index:70;
+  display:flex; align-items:center; gap:10px; max-width:calc(100vw - 24px);
+  padding:5px 5px 5px 14px; border-radius:999px;
+  /* Непрозрачный фон вместо размытия. Второй backdrop-filter поверх
+     скроллящегося контента (первый — у шапки) заставляет композитор
+     пересобирать размытую область на каждый кадр прокрутки — это
+     задокументированная причина просадки fps. При 96% непрозрачности
+     размытие всё равно не читается, а кадр становится дешёвым. */
+  background:color-mix(in srgb, var(--bg-2) 96%, transparent);
+  border:1px solid var(--line-2);
+  box-shadow:0 12px 34px -14px rgba(0,0,0,.55);
+  /* Клип по скруглению: без него активный сегмент (заливка + текст) вылезал
+     за дугу пилюли — зелёное пятно и буквы за рамкой на телефоне. */
+  overflow:hidden;
+  /* появление: сдвиг только по Y, чтобы центрирование не дёргалось */
+  transform:translate(-50%, 14px); opacity:0; pointer-events:none;
+  transition:opacity 220ms var(--ease-out), transform 220ms var(--ease-out);
+}
+.pillnav.show{transform:translate(-50%, 0); opacity:1; pointer-events:auto}
+.pillnav-label{
+  flex:0 0 auto; font-family:var(--mono); font-size:.6rem; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--ink-3);
+}
+
+/* Дорожка сегментов. На узком экране листается горизонтально; по краям
+   fade-градиент. Он лежит НА дорожке, поэтому у неё есть боковой padding —
+   иначе крайний сегмент невозможно докрутить из-под градиента
+   (записанная грабля по каруселям с fade).
+   Отрицательного margin здесь быть НЕ должно: он вытаскивал дорожку за
+   пределы пилюли, и активный сегмент рисовался поверх её скруглённого края. */
+.pillnav-track{
+  display:flex; gap:3px; overflow-x:auto; scrollbar-width:none;
+  padding:0 10px; scroll-behavior:smooth;
+  /* mask-image здесь БЫЛ и убран сознательно: линейный градиент гасит
+     содержимое прямой вертикальной линией, а рамка пилюли скруглена —
+     срез не совпадал с дугой и читался как дефект. Плюс он же гасил
+     кольцо фокуса у краёв дорожки. Обрезку теперь делает overflow:hidden
+     на самой пилюле, то есть ровно по её скруглению. */
+}
+.pillnav-track::-webkit-scrollbar{display:none}
+.pillnav a{
+  flex:0 0 auto; text-decoration:none; white-space:nowrap;
+  font-size:.79rem; font-weight:550; color:var(--ink-2);
+  padding:7px 13px; border-radius:999px;
+  transition:color var(--t-hover) ease, background-color var(--t-hover) ease;
+}
+@media (hover:hover) and (pointer:fine){ .pillnav a:hover{color:var(--ink); background:var(--bg)} }
+.pillnav a:active{transform:scale(.97)}
+.pillnav a.on{background:var(--accent); color:var(--bg); font-weight:650}
+/* Кольцо фокуса рисуем ВНУТРЬ: дорожка — скролл-контейнер, а сама пилюля
+   с этого захода имеет overflow:hidden, поэтому наружное кольцо
+   (общее правило :focus-visible, offset 3px) срезалось сверху и снизу. */
+/* Низ экрана на сенсорном устройстве занимает сам браузер: Яндекс.Браузер
+   держит там адресную строку и круглую кнопку «наверх», она садится ровно
+   на пилюлю. Условие по УКАЗАТЕЛЮ, а не по ширине: телефон в горизонтали
+   — это 800-930 CSS-px, и по ширине он считался бы десктопом, оставаясь
+   при этом с той же кнопкой браузера поверх навигатора. */
+@media (pointer:coarse){
+  .pillnav{bottom:calc(68px + env(safe-area-inset-bottom))}
+}
+.pillnav a:focus-visible{outline-offset:-2px}
+/* У АКТИВНОГО сегмента заливка — тот же --accent, что и кольцо: уведённое
+   внутрь кольцо садилось на собственный фон и пропадало (контраст 1:1).
+   На зелёной заливке видно фоновый цвет — 6.23:1. */
+.pillnav a.on:focus-visible{outline-color:var(--bg)}
+
+@media (max-width:600px){
+  .pillnav{padding-left:11px; gap:7px}
+  .pillnav-label{display:none}
+  .pillnav a{font-size:.76rem; padding:7px 11px}
+}
+@media (prefers-reduced-motion: reduce){
+  .pillnav{transition:opacity 160ms ease}
+  .pillnav-track{scroll-behavior:auto}
+}
+
+.topbar-right{display:flex; align-items:center; gap:8px; flex:0 0 auto; margin-left:auto}
+.nav + .topbar-right{margin-left:0}
+
+/* Сегментный переключатель — общий для языка (EN/RU) и темы (тёмная/светлая).
+   Ползунок ездит ease-in-out: это движение по экрану, а не появление. */
+.seg{
+  position:relative; display:flex; align-items:center; padding:2px;
+  border:1px solid var(--line-2); border-radius:999px; background:transparent;
+  font:inherit; cursor:pointer; overflow:hidden; text-decoration:none;
+  --seg-w:34px;
+  transition:transform var(--t-press) var(--ease-out), border-color var(--t-hover) ease;
+}
+.seg.theme{--seg-w:29px}
+.seg-pill{
+  position:absolute; top:2px; left:2px; width:calc(50% - 2px); height:calc(100% - 4px);
+  border-radius:999px; background:var(--ink);
+  transition:transform 220ms var(--ease-in-out);
+}
+.seg[data-on="b"] .seg-pill{transform:translateX(100%)}
+/* Именно .s-a/.s-b, а не `.seg span` — иначе правило накрыло бы и .seg-pill
+   (у `.seg span` специфичность выше) и выбило бы ползунок из абсолютного
+   позиционирования: ползунок встал бы в поток, а подпись стала невидимой. */
+.seg .s-a, .seg .s-b{
+  position:relative; z-index:1; display:block; width:var(--seg-w); text-align:center;
+  font-family:var(--mono); font-size:.67rem; font-weight:600; letter-spacing:.06em;
+  padding:4px 0; color:var(--ink-3); line-height:1.35;
+  transition:color 200ms ease;
+}
+.seg[data-on="a"] .s-a,
+.seg[data-on="b"] .s-b{color:var(--bg)}
+@media (hover:hover) and (pointer:fine){ .seg:hover{border-color:var(--accent)} }
+.seg:active{transform:scale(.97)}
+
+.tg-top{
+  display:inline-flex; align-items:center; gap:6px; text-decoration:none;
+  font-size:.82rem; font-weight:500; color:var(--ink);
+  border:1px solid var(--line-2); border-radius:999px; padding:6px 13px;
+  transition:transform var(--t-press) var(--ease-out), border-color var(--t-hover) ease;
+}
+.tg-top svg{width:13px; height:13px; fill:var(--accent)}
+@media (hover:hover) and (pointer:fine){ .tg-top:hover{border-color:var(--accent)} }
+.tg-top:active{transform:scale(.97)}
+
+/* ─────────────────────────── hero ─────────────────────────── */
+.hero{padding:92px 0 76px}
+.hero .label{display:block; margin-bottom:22px}
+.hero h1{
+  font-size:clamp(2.3rem, 6.4vw, 3.55rem);
+  letter-spacing:-.042em; margin-bottom:16px;
+}
+.hero .role{
+  margin:0 0 26px; font-size:1.02rem; color:var(--ink-2); line-height:1.5;
+  max-width:34ch;
+}
+.hero .role b{color:var(--ink); font-weight:600}
+.hero .tagline{margin:0 0 30px; font-size:1.02rem; max-width:58ch; color:var(--ink)}
+
+.claim{
+  margin:0 0 34px; padding:18px 0 0; border-top:1px solid var(--line);
+  font-size:.95rem; color:var(--ink-2); max-width:58ch;
+}
+.claim b{display:block; color:var(--ink); font-weight:600; margin-bottom:4px; font-size:1rem}
+
+.hero-cta{display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-bottom:44px}
+.cta-sub{color:var(--ink-3); font-size:.82rem}
+
+.btn{
+  display:inline-flex; align-items:center; gap:9px; text-decoration:none;
+  font-size:.92rem; font-weight:550; padding:12px 22px; border-radius:11px;
+  border:1px solid var(--line-2); color:var(--ink); background:transparent;
+  cursor:pointer; font-family:inherit;
+  transition:transform var(--t-press) var(--ease-out), border-color var(--t-hover) ease, background-color var(--t-hover) ease;
+}
+.btn svg{width:16px; height:16px; fill:currentColor}
+.btn:active{transform:scale(.98)}
+.btn.solid{background:var(--ink); color:var(--bg); border-color:var(--ink)}
+@media (hover:hover) and (pointer:fine){
+  .btn:hover{border-color:var(--accent)}
+  .btn.solid:hover{background:var(--accent); border-color:var(--accent); color:var(--bg)}
+}
+.btn .arr{transition:transform var(--t-hover) var(--ease-out)}
+@media (hover:hover) and (pointer:fine){ .btn:hover .arr{transform:translateX(3px)} }
+
+/* цифры */
+.stats{display:flex; align-items:flex-start; gap:44px; list-style:none; margin:0; padding:26px 0 0; border-top:1px solid var(--line); flex-wrap:wrap}
+.stats li{display:flex; flex-direction:column; gap:2px}
+.stats b{font-family:var(--mono); font-size:1.35rem; font-weight:600; color:var(--accent); letter-spacing:-.02em}
+.stats span{font-size:.78rem; color:var(--ink-3); max-width:18ch; line-height:1.4}
+
+/* ─────────────────────── секции ─────────────────────── */
+.sec{padding:64px 0; border-top:1px solid var(--line); content-visibility:auto; contain-intrinsic-size:auto 640px}
+.sec-head{margin-bottom:38px}
+.sec-head .label{display:flex; align-items:center; gap:10px; margin-bottom:14px}
+.sec-head .label::after{content:''; flex:1; height:1px; background:var(--line)}
+/* Заголовок секции обязан отличаться от заголовка карточки НЕ на глаз, а
+   кратно: h3 в карточках — 1.02rem, и при прежнем потолке 1.95rem разрыв
+   был всего 1.9× при одинаковой жирности 600 — уровни читались как один. */
+.sec h2{font-size:clamp(1.5rem, 3.4vw, 2.6rem); margin-bottom:11px}
+.sec .sub{margin:0; color:var(--ink-2); font-size:.95rem; max-width:56ch}
+
+/* появление секции: transition + IntersectionObserver, со стаггером 40 мс */
+.reveal{opacity:0; transform:translateY(10px); transition:opacity 420ms var(--ease-out), transform 420ms var(--ease-out)}
+.reveal.in{opacity:1; transform:none}
+
+/* ─── почему я: нумерованный список, не карточки ─── */
+.why-list{list-style:none; margin:0; padding:0; counter-reset:w}
+.why-item{
+  counter-increment:w; display:grid; grid-template-columns:34px 1fr; gap:18px;
+  padding:24px 0; border-top:1px solid var(--line);
+}
+.why-item:first-child{border-top:none; padding-top:0}
+.why-item::before{
+  content:counter(w,decimal-leading-zero);
+  font-family:var(--mono); font-size:.72rem; color:var(--ink-3); padding-top:4px; letter-spacing:.06em;
+}
+.why-item .pain{display:block; font-size:1.04rem; font-weight:600; margin-bottom:7px; letter-spacing:-.015em}
+.why-item .fact{display:block; color:var(--ink-2); font-size:.9rem; margin-bottom:12px}
+.why-item .ans{display:block; font-size:.92rem; padding-left:15px; border-left:2px solid var(--accent)}
+
+.why-fold{display:block}
+.why-lead{
+  position:relative; display:flex; align-items:flex-end; gap:12px;
+  cursor:pointer; list-style:none; padding:10px 0 11px;
+  font-size:.92rem; color:var(--ink);
+}
+.why-lead::-webkit-details-marker{display:none}
+.why-lead::after,
+.sec-fold-sum::after,
+.faq-q::before{
+  content:''; position:absolute; left:0; right:0; bottom:0; height:2px;
+  border-radius:2px; pointer-events:none;
+  background:linear-gradient(90deg,
+    color-mix(in srgb, var(--accent) 10%, transparent) 0%,
+    var(--accent) 28%,
+    color-mix(in srgb, var(--accent) 22%, transparent) 55%,
+    color-mix(in srgb, var(--accent) 10%, transparent) 100%);
+  background-size:260% 100%;
+  animation:dxSheen 6s linear infinite;
+  transition:height .18s var(--ease-out), opacity .18s var(--ease-out);
+  opacity:.55;
+}
+@keyframes dxSheen{
+  0%{background-position:160% 0} 100%{background-position:-60% 0}
+}
+.why-lead:hover::after,
+.sec-fold-sum:hover::after,
+.faq-q:hover::before{height:3px; opacity:1}
+/* Раскрытый блок больше не приглашает нажать — линия гаснет */
+.why-fold[open] .why-lead::after,
+.sec-fold[open] .sec-fold-sum::after,
+.faq-item[open] .faq-q::before{opacity:.2; animation:none}
+.why-lead-txt{flex:1 1 auto}
+.why-lead-more,.why-lead-less{
+  flex:none; font-family:var(--mono); font-size:.7rem; letter-spacing:.06em;
+  color:var(--ink-3); white-space:nowrap;
+}
+.why-lead-less{display:none}
+.why-fold[open] .why-lead-more{display:none}
+.why-fold[open] .why-lead-less{display:inline}
+.why-fold[open] .ans{margin-top:12px}
+.why-lead:hover .why-lead-more,.why-lead:hover .why-lead-less{color:var(--accent)}
+@media (prefers-reduced-motion: reduce){
+  .why-lead::after,
+  .sec-fold-sum::after,
+  .faq-q::before{animation:none; transition:none}
+}
+
+/* ─── что делаю ─── */
+.svc-list{list-style:none; margin:0; padding:0}
+.svc-item{padding:26px 0; border-top:1px solid var(--line)}
+.svc-item:first-child{border-top:none; padding-top:0}
+.svc-item h3{font-size:1.08rem; margin-bottom:7px}
+.svc-item .txt{margin:0 0 14px; color:var(--ink-2); font-size:.92rem; max-width:56ch}
+.svc-item ul{list-style:none; margin:0; padding:0; display:grid; gap:7px}
+.svc-item li{position:relative; padding-left:20px; font-size:.89rem; color:var(--ink)}
+.svc-item li::before{
+  content:''; position:absolute; left:2px; top:.62em; width:6px; height:1px; background:var(--accent-2);
+}
+
+/* ─── продвижение ─── */
+.promo-list{display:grid}
+.promo-row{display:grid; gap:9px; padding:20px 0; border-top:1px solid var(--line); align-content:start}
+.promo-row:first-child{border-top:none; padding-top:0}
+/* Тег стоит ПРИ заголовке, а не у края колонки: в две колонки правый край —
+   это уже граница с соседней услугой. */
+.promo-head{display:flex; align-items:baseline; flex-wrap:wrap; gap:6px 10px}
+.promo-row h3{font-size:1.02rem}
+.promo-row .txt{margin:0; font-size:.9rem; color:var(--ink-2)}
+/* Тег читался как призрак: рамка 38% прозрачности давала контраст ~1.9:1
+   (текст-то проходил, а границы не было видно), кегль 0.63rem = 10.1px —
+   ниже читаемого минимума. Стал плашкой: заливка + плотнее рамка + кегль. */
+.promo-tag{
+  font-family:var(--mono); font-size:.7rem; letter-spacing:.06em; color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 8%, transparent);
+  border:1px solid color-mix(in srgb, var(--accent) 58%, transparent);
+  border-radius:999px; padding:4px 11px; height:fit-content; white-space:nowrap;
+}
+.promo-note{margin:22px 0 0; padding-top:16px; border-top:1px solid var(--line); font-size:.85rem; color:var(--ink-3);
+  /* pre-line — чтобы юридическая сноска про Meta стояла отдельной строкой,
+     а не слипалась с предыдущей. Текст ставится через textContent, поэтому
+     разделить его можно только переводом строки в самом значении. */
+  white-space:pre-line}
+
+/* ─── работы: строки списка ─── */
+.works-list{display:grid}
+.work{
+  display:grid; grid-template-columns:104px 1fr auto; gap:20px; align-items:center;
+  width:100%; text-align:left; font:inherit; color:inherit;
+  background:transparent; border:none; border-top:1px solid var(--line);
+  padding:20px 12px; margin:0 -12px; cursor:pointer; border-radius:12px;
+  transition:transform var(--t-press) var(--ease-out), background-color var(--t-hover) ease;
+}
+.work:first-child{border-top:none}
+@media (hover:hover) and (pointer:fine){
+  .work:hover{background:var(--bg-2)}
+  .work:hover .work-go{transform:translateX(4px); color:var(--accent)}
+  .work:hover .shot{transform:scale(1.03)}
+}
+.work:active{transform:scale(.995)}
+.work .shot-wrap{overflow:hidden; border-radius:8px; border:1px solid var(--line); aspect-ratio:16/10; background:var(--bg-2)}
+.work .shot{width:100%; height:100%; object-fit:cover; transition:transform 320ms var(--ease-out)}
+/* Скринов пока нет — в рамке стоит домен проекта. «NO IMAGE» в портфолио
+   читается как недоделка, домен — как факт: систему можно открыть и увидеть. */
+.work .shot-none{
+  width:100%; height:100%; display:grid; place-items:center; padding:0 8px;
+  font-family:var(--mono); font-size:.68rem; color:var(--ink-3); letter-spacing:.04em;
+  text-align:center; overflow:hidden; word-break:break-word; line-height:1.3;
+}
+/* Карточка с живым демо получает колонку шире: в 104px ноутбук — это марка,
+   а не работа. Правило стоит ЗДЕСЬ, а не в блоке @media (min-width:940px)
+   выше: тот блок идёт раньше .work в файле и при равной специфичности
+   молча перебивается им (медиазапрос специфичность не повышает). */
+.work.has-demo{grid-template-columns:344px minmax(0,1fr) auto; gap:30px}
+@media (max-width:720px){
+  .work.has-demo{grid-template-columns:1fr; gap:16px; justify-items:start}
+  .work.has-demo .lp{max-width:none}
+  .work.has-demo .lp-stage{max-width:420px}
+}
+
+/* ── СЦЕНА «НОУТБУК + ТЕЛЕФОН» ────────────────────────────────────────────
+   Пара устройств = одна система на двух экранах. Телефон лежит поверх
+   нижнего-правого угла ноута и свисает ниже основания — так читается
+   «ближе к зрителю», а не «наклейка на крышке».
+   Ширина телефона задана В ПРОЦЕНТАХ от сцены, а не в px: колонка работы
+   меняется от 344px до всей ширины экрана, и фиксированный размер сделал бы
+   телефон то игрушечным, то больше ноутбука.
+   Нижнего запаса требует именно свес: у .work padding 20px, без него телефон
+   уезжал бы под соседнюю строку списка. */
+.lp-stage{position:relative; width:100%; padding-bottom:18px}
+/* Телефон свисает ЗА правый край сцены, а не отжимает ноутбук внутрь:
+   иначе ноут этой работы становится уже, чем у соседних строк списка, и
+   ряд визуально «сыплется». Свес ~4% (≈14px) съедается зазором колонки. */
+.lp-stage.has-phone{padding-right:0}
+/* Двойной класс намеренно: правило .rv-phone стоит НИЖЕ в файле, и при
+   равной специфичности оно молча перебивало бы ширину и наклон. */
+.rv-phone.wk-phone{
+  position:absolute; right:-4%; bottom:0; z-index:2;
+  width:25%; padding:1.6%;
+  border-radius:16px; cursor:inherit;
+  transform:perspective(900px) rotateY(-6deg) rotateX(1deg);
+}
+.wk-phone .rv-screen{border-radius:12px}
+.wk-phone .rv-video{border-radius:12px; object-fit:cover}
+.wk-phone .rv-glare{border-radius:12px}
+/* Детали корпуса в масштабе: остров и полоска-дом заданы долями, иначе на
+   маленьком корпусе «остров» размером с половину экрана. */
+.wk-phone .rv-island{top:3.5%; width:36%; height:2.2%; min-height:3px}
+.wk-phone .rv-home{bottom:2.5%; width:40%; height:2px}
+.wk-phone .rv-btn{width:2px; border-radius:1px}
+/* Кнопка «открыть отдельно». По умолчанию скрыта: под курсором запись уже
+   играет, и постоянный кружок поверх кадра только мешает. Появляется, когда
+   курсор именно на телефоне — тогда это подсказка «сюда можно нажать».
+   Размытия НЕТ намеренно: backdrop-filter поверх играющего видео заставляет
+   композитор пересчитывать блюр на каждый кадр. */
+.wk-phone .rv-play{
+  width:30px; height:30px; backdrop-filter:none; background:rgba(16,18,22,.62);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);
+  opacity:0; visibility:hidden;
+}
+.wk-phone .rv-play svg{width:13px; height:13px; margin-left:1px}
+@media (hover:hover) and (pointer:fine){
+  .wk-phone:hover .rv-play{opacity:1; visibility:visible}
+}
+.wk-phone:focus-visible{outline:2px solid var(--accent); outline-offset:3px}
+.wk-phone:focus-visible .rv-play{opacity:1; visibility:visible}
+/* На тач-устройстве наведения нет — там подсказка видна всегда */
+@media (hover:none){ .wk-phone .rv-play{opacity:1; visibility:visible} }
+.wk-phone .rv-btn-vol1{top:22%; height:8%}
+.wk-phone .rv-btn-vol2{top:33%; height:8%}
+.wk-phone .rv-btn-pwr {top:26%; height:12%}
+/* Наведение на строку поднимает обе железки заодно — иначе телефон выглядит
+   отклеившимся от ноутбука, который в этот момент подрос. */
+@media (hover:hover) and (pointer:fine){
+  .work:hover .rv-phone.wk-phone{
+    transform:perspective(900px) rotateY(-6deg) rotateX(1deg) translateY(-3px) scale(1.02);
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255,255,255,.18),
+      inset 0 1px 2px rgba(255,255,255,.26),
+      0 20px 34px -20px rgba(0,0,0,.7);
+  }
+}
+@media (prefers-reduced-motion: reduce){
+  .rv-phone.wk-phone, .work:hover .rv-phone.wk-phone{transition:none; transform:none}
+}
+
+/* ── РАМКА НОУТБУКА ───────────────────────────────────────────────────────
+   Горизонтальный аналог телефона из отзывов. Корпус — CSS, без картинок:
+   крышка с толстой нижней гранью (там у ноутбуков подбородок), глазок камеры
+   сверху, под крышкой — основание в перспективе с выемкой под палец.
+   Пропорция экрана НЕ задана здесь: её ставит JS из demo.screen, потому что
+   запись сделана в окне 1920x914, а не 16:9. */
+.lp{width:100%; max-width:420px; perspective:1400px}
+.lp-lid{
+  position:relative; padding:9px 9px 16px; border-radius:12px 12px 4px 4px;
+  background:linear-gradient(160deg,#3d424a,#1c1f24 45%,#33383f);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,.12),
+    inset 0 1px 1px rgba(255,255,255,.2),
+    0 16px 30px -20px rgba(0,0,0,.65);
+  transition:transform var(--t-modal) var(--ease-out), box-shadow var(--t-modal) var(--ease-out);
+}
+.lp-screen{position:relative; overflow:hidden; border-radius:4px; background:#07080a}
+/* contain, а не cover: запись сделана в окне 1898x888 (2.13:1), а экран
+   ноутбука 16:10 — cover срезал бы у неё верх и низ вместе с шапкой сайта.
+   Поля сверху и снизу — честная плата за то, что кадр виден целиком. */
+.lp-video{
+  display:block; width:100%; height:100%; object-fit:contain; object-position:center;
+  border-radius:4px; background:#07080a;
+}
+.lp-cam{
+  position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+  width:5px; height:5px; border-radius:50%; background:#0d0f12;
+  box-shadow:0 0 0 1px rgba(255,255,255,.14);
+}
+.lp-glare{
+  position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(112deg, rgba(255,255,255,.13) 0%, rgba(255,255,255,.04) 20%,
+             rgba(255,255,255,0) 44%);
+  transition:opacity var(--t-modal) var(--ease-out);
+}
+/* Основание: трапеция за счёт наклона по X — на плоской подложке ноутбук
+   выглядел бы наклейкой, а не предметом на столе. */
+.lp-base{
+  position:relative; height:11px; margin:0 -14px;
+  border-radius:0 0 10px 10px;
+  background:linear-gradient(180deg,#40454d,#23272d);
+  box-shadow:0 10px 18px -12px rgba(0,0,0,.7);
+  transform:rotateX(52deg); transform-origin:top center;
+}
+.lp-base::after{
+  content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+  width:86px; height:4px; border-radius:0 0 6px 6px; background:rgba(0,0,0,.45);
+}
+
+@media (hover:hover) and (pointer:fine){
+  .work:hover .lp-lid{
+    transform:translateY(-2px) scale(1.012);
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,.2),
+      inset 0 1px 1px rgba(255,255,255,.28),
+      0 22px 40px -20px rgba(0,0,0,.7),
+      0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent),
+      0 0 30px -6px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+  .work:hover .lp-glare{opacity:.35}
+}
+@media (prefers-reduced-motion: reduce){
+  .lp-lid{transition:none}
+  .work:hover .lp-lid{transform:none}
+}
+
+/* Крупный ноутбук в модалке кейса: там уже не превью, а просмотр.
+   Поля обязательны: основание вынесено за края крышки отрицательным
+   margin, и без запаса оно упиралось в стенки модалки, добавляя ей
+   горизонтальную прокрутку. */
+.lp-big{max-width:none; margin:0; padding:20px 22px 12px}
+.lp-big .lp-lid{border-radius:14px 14px 4px 4px; padding:11px 11px 18px}
+.lp-big .lp-base{height:13px}
+
+.work .kicker{font-family:var(--mono); font-size:.65rem; letter-spacing:.11em; text-transform:uppercase; color:var(--ink-3)}
+.work h3{font-size:1.06rem; margin:3px 0 4px}
+.work .summary{margin:0 0 9px; font-size:.87rem; color:var(--ink-2)}
+.tags{display:flex; align-items:center; flex-wrap:wrap; gap:5px}
+.tag{
+  font-family:var(--mono); font-size:.7rem; letter-spacing:.04em; color:var(--ink-3);
+  border:1px solid var(--line-2); border-radius:5px; padding:2px 7px;
+}
+.work-go{
+  font-family:var(--mono); font-size:.95rem; color:var(--ink-3);
+  transition:transform var(--t-hover) var(--ease-out), color var(--t-hover) ease;
+}
+
+/* пусто */
+.works-empty{padding:46px 0 8px; border-top:1px solid var(--line)}
+.works-empty .label{display:block; margin-bottom:12px; color:var(--accent)}
+.works-empty h3{font-size:1.2rem; margin-bottom:10px}
+.works-empty p{margin:0 0 22px; color:var(--ink-2); font-size:.93rem; max-width:52ch}
+
+/* ─── с кем работаю ─── */
+/* Логотипов-файлов нет, поэтому марка — моно-инициалы в квадрате. Это честнее
+   пустой рамки под картинку и держит тот же сдержанный ритм, что и остальные
+   списки: волосяная линия сверху, никаких плиток. */
+
+/* ── ОТЗЫВЫ: видео в рамке телефона ───────────────────────────────────────
+   Корпус нарисован CSS-ом: скруглённый прямоугольник с двойной рамкой
+   (внешняя = «титан», внутренняя тёмная = стекло), «остров» фронталки,
+   боковые кнопки и диагональный блик. Никакой картинки и никакого WebGL —
+   у сайта заявлен ноль зависимостей.
+   Объём даёт perspective + лёгкий поворот по Y; при наведении корпус
+   выпрямляется, чуть увеличивается и загорается ореолом акцентного цвета. */
+.rv-list{display:grid; gap:34px}
+.rv-card{
+  display:grid; grid-template-columns:236px 1fr; gap:32px; align-items:start;
+  /* карточки прижаты к верху, а не растянуты — короткая карточка не должна
+     раздувать колонку под высоту телефона */
+  padding:26px 0; border-top:1px solid var(--line);
+}
+.rv-card:first-child{border-top:none; padding-top:6px}
+
+/* Поля корпуса задаются PADDING, а не margin у экрана. С margin рамка была
+   неравномерной: у обычного <div>-корпуса (модалка) вертикальные margin
+   ребёнка схлопываются наружу — слева и справа поля есть, сверху и снизу
+   нули, видео упирается в грань. Горизонтальные margin не схлопываются
+   никогда, отсюда и «слева-справа нормально, сверху-снизу нет». */
+.rv-phone{
+  position:relative; display:block; width:236px; padding:9px; cursor:pointer;
+  background:linear-gradient(155deg,#3b4048,#1b1e23 42%,#2f343b);
+  border:0; border-radius:34px;
+  /* Внутренняя светлая грань = фаска корпуса; наружная тень = отрыв от фона */
+  box-shadow:
+    inset 0 0 0 1.5px rgba(255,255,255,.13),
+    inset 0 1px 2px rgba(255,255,255,.22),
+    0 22px 40px -22px rgba(0,0,0,.6);
+  transform:perspective(1100px) rotateY(-7deg) rotateX(1.5deg);
+  transform-origin:center;
+  transition:transform var(--t-modal) var(--ease-out),
+             box-shadow var(--t-modal) var(--ease-out);
+}
+.rv-screen{
+  position:relative; display:block; overflow:hidden;
+  margin:0; border-radius:26px; background:#000;
+  aspect-ratio:9/16;
+}
+.rv-video{
+  display:block; width:100%; height:100%; object-fit:cover;
+  border-radius:26px;
+}
+/* Субтитры. Шрифт — тот же Inter, что и на всей странице: браузерный дефолт
+   (гротеск системы) на кадре выглядит чужеродно. Кегль задаётся для каждого
+   размера отдельно — доля от высоты видео здесь не работает, а один размер
+   на превью 236px и на модалку 420px читался бы либо крошкой, либо плакатом.
+   ::cue не наследует ничего от родителя, поэтому всё перечислено явно. */
+.rv-video::cue{
+  font-family:var(--sans); font-size:12px; line-height:1.35;
+  color:#fff; background:rgba(0,0,0,.55);
+}
+/* «Остров» фронталки — та самая деталь, по которой корпус читается айфоном */
+.rv-island{
+  position:absolute; top:9px; left:50%; transform:translateX(-50%);
+  width:62px; height:17px; border-radius:999px; background:#0a0a0b;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);
+  pointer-events:none;
+}
+/* Блик стекла: одна диагональная полоса, почти незаметная — она даёт
+   ощущение стекла поверх экрана, а не «видео в рамке». */
+.rv-glare{
+  position:absolute; inset:0; pointer-events:none; border-radius:26px;
+  background:linear-gradient(115deg,
+    rgba(255,255,255,.16) 0%, rgba(255,255,255,.05) 22%,
+    rgba(255,255,255,0) 46%, rgba(255,255,255,0) 100%);
+  transition:opacity var(--t-modal) var(--ease-out);
+}
+/* Боковые кнопки — три штриха, читаются как громкость и питание */
+.rv-btn{position:absolute; background:linear-gradient(90deg,#2a2e34,#454b54); border-radius:2px}
+.rv-btn-vol1{left:-2px; top:96px;  width:3px; height:30px}
+.rv-btn-vol2{left:-2px; top:134px; width:3px; height:30px}
+.rv-btn-pwr {right:-2px; top:112px; width:3px; height:46px}
+
+.rv-play{
+  position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:64px; height:64px; border-radius:50%; display:grid; place-items:center;
+  /* «Матовое стекло» плеера iOS: полупрозрачная заливка, размытие подложки и
+     тонкая светлая грань по краю. Подписи нет намеренно — круг с треугольником
+     и так самый узнаваемый элемент интерфейса, какой существует. */
+  background:rgba(22,24,28,.42); backdrop-filter:blur(10px) saturate(160%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.42), 0 6px 20px -8px rgba(0,0,0,.6);
+  transition:opacity var(--t-hover) ease, transform var(--t-hover) var(--ease-out),
+             background var(--t-press) ease, visibility 0s linear var(--t-hover);
+  pointer-events:none;
+}
+.rv-play svg{width:27px; height:27px; fill:#fff; margin-left:3px}
+
+/* Полоска-индикатор дома — вторая после «острова» деталь, по которой корпус
+   опознаётся как современный айфон. */
+.rv-home{
+  position:absolute; bottom:8px; left:50%; transform:translateX(-50%);
+  width:96px; height:4px; border-radius:999px; background:rgba(255,255,255,.75);
+  box-shadow:0 0 6px rgba(0,0,0,.35); pointer-events:none;
+}
+
+@media (hover:hover) and (pointer:fine){
+  .rv-phone:not(.vm-phone):not(.wk-phone):hover, .rv-phone:not(.vm-phone):not(.wk-phone):focus-visible{
+    transform:perspective(1100px) rotateY(0deg) rotateX(0deg) scale(1.035);
+    box-shadow:
+      inset 0 0 0 1.5px rgba(255,255,255,.2),
+      inset 0 1px 2px rgba(255,255,255,.3),
+      0 26px 52px -22px rgba(0,0,0,.65),
+      0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent),
+      0 0 34px -4px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+  /* Пошло видео — кнопка и блик уходят, чтобы не мешать лицу */
+  /* visibility, а не только opacity: прозрачный слой с backdrop-filter всё
+     равно считается композитором на каждый кадр играющего видео. */
+  .rv-phone:not(.vm-phone):not(.wk-phone):hover .rv-play, .rv-phone:not(.vm-phone):not(.wk-phone):focus-visible .rv-play{
+    opacity:0; visibility:hidden; transform:translate(-50%,-50%) scale(.9);
+  }
+  .rv-phone:not(.vm-phone):not(.wk-phone):hover .rv-glare, .rv-phone:not(.vm-phone):not(.wk-phone):focus-visible .rv-glare{opacity:.4}
+}
+.rv-phone:not(.vm-phone):not(.wk-phone):active{transform:perspective(1100px) scale(.985)}
+.rv-phone:not(.vm-phone):not(.wk-phone):active .rv-play{transform:translate(-50%,-50%) scale(.92); background:rgba(22,24,28,.62)}
+
+/* Текст рядом */
+.rv-body{display:grid; justify-items:start; gap:0}
+.rv-avatar{width:48px; height:48px; border-radius:50%; margin-bottom:10px; object-fit:cover; border:1px solid var(--line-2)}
+.rv-name{font-size:1.18rem; font-weight:600; letter-spacing:-0.02em}
+.rv-role{font-family:var(--mono); font-size:.72rem; letter-spacing:.05em; color:var(--ink-3); margin-top:3px}
+.rv-note{margin:12px 0 0; color:var(--ink-2)}
+.rv-lang{
+  margin-top:10px; font-family:var(--mono); font-size:.66rem; letter-spacing:.09em;
+  text-transform:uppercase; color:var(--ink-3);
+  border:1px solid var(--line-2); border-radius:5px; padding:3px 8px;
+}
+.rv-quote{margin:14px 0 0; color:var(--ink); font-size:1.02rem}
+.rv-links{display:flex; flex-wrap:wrap; gap:8px; margin-top:16px}
+.rv-link{
+  font-size:.83rem; color:var(--ink-2); text-decoration:none;
+  border:1px solid var(--line-2); border-radius:999px; padding:6px 13px;
+  transition:border-color var(--t-hover) ease, color var(--t-hover) ease;
+}
+.rv-link::before{content:'↗ '; color:var(--ink-3)}
+@media (hover:hover) and (pointer:fine){
+  .rv-link:hover{color:var(--ink); border-color:var(--accent)}
+}
+
+/* Телефон в руках: наведения нет, поэтому кнопка Play видна всегда,
+   а телефон-виджет разворачивается на всю ширину колонки. */
+@media (max-width:640px){
+  .rv-card{grid-template-columns:1fr; gap:22px; justify-items:center}
+  .rv-phone{width:min(201px,60vw)}
+  .rv-body{justify-items:center; text-align:center}
+  .rv-links{justify-content:center}
+}
+@media (hover:none){
+  .rv-phone{transform:none}
+  .rv-play{opacity:1}
+}
+@media (prefers-reduced-motion: reduce){
+  .rv-phone{transition:none; transform:none}
+  .rv-phone:hover, .rv-phone:focus-visible{transform:none}
+}
+
+/* ── МОДАЛКА ВИДЕО ────────────────────────────────────────────────────────
+   Отдельная от модалки кейса: здесь вертикальное видео во весь экран
+   по высоте, без внутренней прокрутки и без белой рамки вокруг чёрного. */
+.vmodal{position:fixed; inset:0; z-index:110; display:grid; place-items:center; padding:20px}
+.vmodal[hidden]{display:none}
+/* Пока открыта модалка с видео, остальные размытия страницы выключены —
+   пояснение ниже, у .vmodal-back. */
+.vm-open .topbar, .vm-open .rv-play{backdrop-filter:none}
+
+/* Размытия здесь НЕТ намеренно. backdrop-filter на весь экран заставляет
+   композитор пересчитывать блюр всей страницы на КАЖДЫЙ кадр видео — модалка
+   с роликом начинала дёргаться, тогда как то же видео при наведении (без
+   подложки) и в полноэкранном режиме (подложка не рисуется) шло гладко.
+   Вместо размытия — просто более плотный фон: стоит ноль. */
+.vmodal-back{
+  position:absolute; inset:0; background:rgba(6,8,10,.82);
+  opacity:0; transition:opacity var(--t-modal) var(--ease-out);
+}
+.vmodal-box{
+  position:relative;
+  opacity:0;
+  transition:opacity var(--t-modal) var(--ease-out);
+}
+/* Корпус в модалке — тот же .rv-phone, только крупнее, без наклона и без
+   реакции на наведение: телефон уже «в руках», дальше крутить его незачем.
+   Ширину считаем от высоты окна: телефон вертикальный, и упирается он всегда
+   в высоту, а не в ширину. 9/16 плюс поля корпуса — отсюда коэффициент. */
+.vm-phone{
+  padding:11px;
+  /* Пропорцию ставит JS (--vm-ratio): у отзывов запись 9:16, у демо мобильной
+     версии сайта — 1080x2324. Один жёсткий коэффициент делал корпус для
+     второго случая слишком широким, и низ видео уходил за край экрана. */
+  width:min(calc((88vh - 22px) * var(--vm-ratio, .5625) + 22px), 92vw);
+  cursor:default;
+  transform:none;
+  transform-origin:top left;      /* нужно FLIP-анимации в app.js */
+}
+/* Мобилка: корпус в модалке на четверть меньше. Режем обе границы сразу —
+   на телефоне ограничителем работает ШИРИНА (92vw), а не высота, и правка
+   одного лишь vh не изменила бы ничего. */
+@media (max-width:640px){
+  .vm-phone{width:min(calc((66vh - 22px) * var(--vm-ratio, .5625) + 22px), 69vw)}
+}
+.vm-phone .rv-screen{border-radius:26px}
+.vm-phone .rv-glare{display:none}   /* блик поверх играющего видео только мешает */
+.vm-phone .rv-island{top:11px; width:76px; height:20px}
+/* Пока телефон «подъезжает», гасим детали корпуса: на лету они мельтешат */
+.vmodal:not(.is-open) .vm-phone .rv-island{opacity:0}
+.vmodal.is-open .vmodal-back{opacity:1}
+.vmodal.is-open .vmodal-box{opacity:1}
+.vmodal-video{
+  display:block; width:100%; height:100%; background:#000;
+  border-radius:26px; object-fit:cover;
+}
+.vmodal-video::cue{
+  font-family:var(--sans); font-size:16px; line-height:1.4;
+  color:#fff; background:rgba(0,0,0,.6);
+}
+.vmodal-x{
+  position:absolute; top:-6px; right:-46px; z-index:2; cursor:pointer;
+  width:34px; height:34px; border-radius:10px; border:1px solid rgba(255,255,255,.28);
+  background:rgba(12,14,17,.6); color:#fff; font-size:.85rem; font-family:inherit;
+  transition:transform var(--t-press) var(--ease-out), background var(--t-hover) ease;
+}
+@media (hover:hover) and (pointer:fine){ .vmodal-x:hover{background:rgba(12,14,17,.85)} }
+@media (max-width:560px){ .vmodal-x{top:14px; right:14px} }
+.vmodal-x:active{transform:scale(.94)}
+@media (prefers-reduced-motion: reduce){
+  .vmodal-back,.vmodal-box{transition:none}
+}
+
+.pn-list{display:grid}
+.pn-row{
+  display:grid; grid-template-columns:44px 1fr auto; gap:16px; align-items:center;
+  padding:16px 12px; margin:0 -12px; border-top:1px solid var(--line);
+  text-decoration:none; color:inherit; border-radius:12px;
+  transition:background-color var(--t-hover) ease;
+}
+.pn-row:first-child{border-top:none}
+@media (hover:hover) and (pointer:fine){
+  .pn-row:hover{background:var(--bg-2)}
+  .pn-row:hover .pn-mark{border-color:var(--accent); color:var(--accent)}
+}
+.pn-mark{
+  display:grid; place-items:center; width:44px; height:44px; border-radius:50%;
+  border:1px solid var(--line-2); font-family:var(--mono); font-size:.8rem;
+  font-weight:600; color:var(--ink-2); letter-spacing:.03em;
+  transition:border-color var(--t-hover) ease, color var(--t-hover) ease;
+}
+/* Логотип занимает ту же коробку, что и буквенная марка, — строки не разъезжаются,
+   даже когда у части партнёров файла нет. Круг, а не скруглённый квадрат:
+   исходники — аватарки Telegram и YouTube, они и рисовались под круг, поэтому
+   углы квадрата у них всё равно пустые или обрезанные.
+   Файл квадратный 96x96, коробка квадратная 44x44 — cover режет ровно ничего,
+   пропорции не плывут. */
+.pn-logo{
+  width:44px; height:44px; border-radius:50%; object-fit:cover; object-position:center;
+  border:1px solid var(--line-2); background:var(--bg-2);
+}
+.pn-name{display:block; font-size:1rem; font-weight:600; letter-spacing:-.015em}
+.pn-kind{display:block; font-size:.84rem; color:var(--ink-2)}
+.pn-meta{
+  font-family:var(--mono); font-size:.72rem; color:var(--ink-3);
+  letter-spacing:.03em; text-align:right;
+}
+
+/* ─── стек: определения ─── */
+.stack-list{display:grid}
+.stack-row{
+  display:grid; grid-template-columns:170px 1fr; gap:20px;
+  padding:15px 0; border-top:1px solid var(--line);
+}
+.stack-row:first-child{border-top:none}
+.stack-row .k{font-family:var(--mono); font-size:.68rem; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-2); padding-top:3px}
+.stack-row .v{font-size:.9rem}
+
+/* ─── сотрудничество ─── */
+.pt-list{display:grid}
+.pt-row{display:grid; grid-template-columns:104px 1fr; gap:20px; padding:22px 0; border-top:1px solid var(--line)}
+.pt-row:first-child{border-top:none; padding-top:0}
+/* Та же грабля, что была у .promo-tag: рамка 38% прозрачности даёт контраст
+   ~1.9:1 — текст читается, а границы плашки физически не видно. Приведено
+   к тем же 58% + лёгкая заливка. */
+.pt-badge{
+  font-family:var(--mono); font-size:.68rem; letter-spacing:.06em; color:var(--accent);
+  background:color-mix(in srgb, var(--accent) 8%, transparent);
+  border:1px solid color-mix(in srgb, var(--accent) 58%, transparent);
+  border-radius:999px; padding:3px 0; text-align:center; height:fit-content;
+}
+.pt-row h3{font-size:1.02rem; margin-bottom:6px}
+.pt-row p{margin:0; font-size:.9rem; color:var(--ink-2)}
+
+.work-live{
+  display:inline-block; margin-top:12px;
+  font-family:var(--mono); font-size:.74rem; letter-spacing:.05em;
+  color:var(--accent); text-decoration:none;
+  border-bottom:1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.work-live:hover{border-bottom-color:currentColor}
+
+/* ─── свёрнутая секция ─── */
+/* Тот же приём, что у вопросов: раскрытие штатное, на <details>, без JS.
+   В свёрнутом виде секция занимает две строки вместо экрана текста. */
+.sec-fold{margin-top:4px}
+.sec-fold-sum{
+  position:relative;
+  display:flex; align-items:baseline; gap:14px; flex-wrap:wrap;
+  cursor:pointer; list-style:none;
+  padding:14px 0; border-top:1px solid var(--line);
+}
+.sec-fold-sum::-webkit-details-marker{display:none}
+.sec-fold-list{flex:1 1 260px; font-size:.9rem; color:var(--ink-2); line-height:1.55}
+.sec-fold-hint{
+  flex:none; font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--ink-3); white-space:nowrap;
+}
+.sec-fold-sum:hover .sec-fold-hint,
+.sec-fold-sum:hover .sec-fold-hide{color:var(--accent)}
+/* Подсказка «Свернуть» — единственная кликабельная подпись в раскрытом
+   состоянии: без неё закрыть блок было бы нечем. */
+.sec-fold-hide{
+  display:none; flex:none; margin-left:auto;
+  font-family:var(--mono); font-size:.72rem; letter-spacing:.06em;
+  color:var(--ink-3); white-space:nowrap;
+}
+.sec-fold[open] .sec-fold-hide{display:inline}
+.sec-fold[open] .sec-fold-hint{display:none}
+.sec-fold[open] .sec-fold-list{display:none}
+
+/* ─── вопросы и ответы ─── */
+/* Раскрытие на <details>: без JS, доступно с клавиатуры, переживает печать
+   страницы. Маркер по умолчанию (треугольник) убираем в обоих движках и
+   рисуем свой плюс — штатный не поддаётся оформлению. */
+.faq-list{display:grid}
+.faq-item{padding:20px 0; border-top:1px solid var(--line)}
+.faq-item:first-child{border-top:none; padding-top:0}
+/* Ширина вопроса ограничена той же мерой, что и ответ: иначе на широком
+   экране знак раскрытия улетает к правому краю колонки и висит в пустоте
+   в полуметре от текста, к которому относится. */
+.faq-q{
+  position:relative; padding-bottom:12px;
+  display:flex; align-items:flex-start; gap:14px; cursor:pointer;
+  max-width:78ch;
+  font-size:1.02rem; font-weight:600; line-height:1.4; list-style:none;
+}
+.faq-q::-webkit-details-marker{display:none}
+.faq-q::after{
+  content:'+'; margin-left:auto; flex:none;
+  font-family:var(--mono); font-weight:400; font-size:1.15rem; line-height:1;
+  color:var(--ink-3); transition:transform .18s ease, color .18s ease;
+}
+.faq-item[open] .faq-q::after{transform:rotate(45deg); color:var(--accent)}
+.faq-q:hover::after{color:var(--accent)}
+.faq-a{
+  margin:10px 0 0; max-width:78ch;
+  font-size:.9rem; line-height:1.6; color:var(--ink-2);
+}
+@media (prefers-reduced-motion: reduce){ .faq-q::after{transition:none} }
+
+/* ─── контакт ─── */
+.contact{padding:78px 0 88px; text-align:center}
+.contact h2{font-size:clamp(1.7rem,4.4vw,2.4rem); margin-bottom:14px}
+.contact p{margin:0 auto 30px; max-width:50ch; color:var(--ink-2)}
+.handle{display:block; margin-top:16px; font-family:var(--mono); font-size:.78rem; color:var(--ink-3); letter-spacing:.04em}
+
+.contact .contact-mail{margin:12px auto 0; max-width:50ch}
+.contact .contact-mail a{color:var(--ink-2); text-decoration:none; border-bottom:1px solid var(--line)}
+.contact .contact-mail a:hover{color:var(--ink); border-bottom-color:currentColor}
+/* Черта отделяет ступень «пока не готов писать» от кнопки «написать».
+   Считаем по соседству, а не через :first-of-type: первый <p> в секции —
+   это вводный текст, и :first-of-type попал бы мимо. */
+.contact .contact-offer{
+  margin:30px auto 0; max-width:52ch; padding-top:24px;
+  border-top:1px solid var(--line);
+  font-size:.86rem; line-height:1.55; color:var(--ink-3);
+}
+.contact .contact-offer + .contact-offer{
+  margin-top:12px; padding-top:0; border-top:0;
+}
+
+/* ─── подвал ─── */
+.foot{border-top:1px solid var(--line); padding:24px 0 96px; color:var(--ink-3); font-size:.79rem}
+.foot-in{display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap}
+
+/* ─────────────────────── модалка ─────────────────────── */
+/* модалка не привязана к триггеру → transform-origin остаётся center (по Emil) */
+.modal{position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:20px}
+.modal[hidden]{display:none}
+/* Размытия здесь нет по той же причине, что и у модалки видео: в кейсе теперь
+   играет демо в ноутбуке, а backdrop-filter на весь экран композитор
+   пересчитывает на КАЖДЫЙ кадр. Симптом был тот же: открыл кейс — дёргается,
+   развернул на весь экран — гладко. */
+.modal-back{
+  position:absolute; inset:0; background:rgba(6,8,10,.82);
+  opacity:0; transition:opacity var(--t-modal) var(--ease-out);
+}
+.modal-box{
+  position:relative; width:100%; max-width:640px; max-height:86vh; overflow:hidden;
+  background:var(--bg); border:1px solid var(--line-2); border-radius:16px;
+  box-shadow:0 40px 90px -40px rgba(0,0,0,.55);
+  opacity:0; transform:scale(.97);
+  transition:opacity var(--t-modal) var(--ease-out), transform var(--t-modal) var(--ease-out);
+}
+.modal.is-open .modal-back{opacity:1}
+.modal.is-open .modal-box{opacity:1; transform:none}
+.modal-scroll{overflow-y:auto; max-height:86vh; overscroll-behavior:contain}
+.modal-x{
+  position:absolute; top:12px; right:12px; z-index:2; cursor:pointer;
+  width:32px; height:32px; border-radius:9px; border:1px solid var(--line-2);
+  background:var(--bg); color:var(--ink-2); font-size:.85rem; font-family:inherit;
+  transition:transform var(--t-press) var(--ease-out), color var(--t-hover) ease;
+}
+@media (hover:hover) and (pointer:fine){ .modal-x:hover{color:var(--ink)} }
+.modal-x:active{transform:scale(.94)}
+.m-shot{width:100%; aspect-ratio:16/9; object-fit:cover; border-bottom:1px solid var(--line)}
+.m-body{padding:26px 28px 28px}
+.m-kicker{font-family:var(--mono); font-size:.66rem; letter-spacing:.11em; text-transform:uppercase; color:var(--ink-3)}
+.m-body h3{font-size:1.5rem; margin:5px 0 10px}
+.m-summary{margin:0 0 20px; color:var(--ink-2)}
+.m-block{margin-bottom:16px}
+.m-block .lbl{
+  display:block; font-family:var(--mono); font-size:.63rem; letter-spacing:.11em;
+  text-transform:uppercase; color:var(--accent); margin-bottom:3px;
+}
+.m-block p{margin:0; font-size:.92rem}
+.m-gallery{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:8px; margin:20px 0 4px}
+.m-gallery img{border-radius:9px; border:1px solid var(--line)}
+.m-actions{display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:22px; padding-top:18px; border-top:1px solid var(--line)}
+
+/* ─────────────────────── адаптив ─────────────────────── */
+@media (max-width:1040px){
+  .hero{padding:60px 0 54px}
+  .sec{padding:50px 0}
+}
+@media (max-width:600px){
+  :root{--pad:20px}
+  .work{grid-template-columns:76px 1fr; gap:14px}
+  /* Совсем узкий экран: телефон крупнее долей от узкого ноута, иначе экранчик
+     превращается в нечитаемую полоску. */
+  .work.has-demo .rv-phone.wk-phone{width:29%}
+  .work-go{display:none}
+  .stack-row{grid-template-columns:1fr; gap:4px}
+  .pt-row{grid-template-columns:1fr; gap:10px}
+  .pn-row{grid-template-columns:40px 1fr; gap:12px}
+  .pn-mark,.pn-logo{width:40px; height:40px}
+  .pn-meta{grid-column:2; text-align:left}
+  .pt-badge{width:88px; padding:3px 10px}
+  .stats{gap:26px}
+  .tg-top span{display:none}
+  .tg-top{padding:7px 11px}
+  .m-body{padding:20px 20px 24px}
+}
+
+/* Пониженная моторика: убираем движение, оставляем прозрачность (по Emil —
+   reduced motion это меньше движения, а не ноль анимации). */
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  .reveal{transform:none; transition:opacity 200ms ease}
+  .seg-pill,.work .shot,.btn .arr,.work-go{transition:none}
+  .modal-box{transform:none; transition:opacity 160ms ease}
+}
+
+/* ── СВОЙ ПЛЕЕР ───────────────────────────────────────────────────────────
+   Панель поверх кадра вместо штатных controls. Разметку собирает player()
+   в app.js, здесь только вид.
+
+   Размытия (backdrop-filter) тут НЕТ ни в панели, ни в меню — сознательно.
+   Всё это лежит поверх играющего видео, а blur над меняющимся кадром
+   заставляет композитор пересчитывать слой 30 раз в секунду. Ровно из-за
+   этого на странице есть класс .vm-open. Глубину даём градиентом и рамкой.
+
+   Всё, что анимируется, — opacity и transform. */
+.pl-host{ --pl-pad:10px; }
+
+/* Затемнение снизу: панель читается на любом кадре, а не только на тёмном */
+.pl-shade{
+  position:absolute; left:0; right:0; bottom:0; height:46%;
+  pointer-events:none; opacity:0;
+  background:linear-gradient(to top,
+    rgba(0,0,0,.72) 0%, rgba(0,0,0,.42) 38%, rgba(0,0,0,0) 100%);
+  transition:opacity 200ms var(--ease-out);
+}
+.pl-host.pl-live .pl-shade{opacity:1}
+
+/* Большая кнопка по центру — только на паузе */
+.pl-big{
+  position:absolute; top:50%; left:50%; z-index:3;
+  width:62px; height:62px; margin:-31px 0 0 -31px; padding:0;
+  display:grid; place-items:center; cursor:pointer;
+  border:1px solid rgba(255,255,255,.26); border-radius:999px;
+  background:rgba(16,18,22,.58); color:#fff;
+  opacity:0; transform:scale(.92); pointer-events:none;
+  transition:opacity 180ms var(--ease-out), transform 180ms var(--ease-out),
+             background 140ms ease;
+}
+.pl-big svg{width:30px; height:30px; fill:currentColor; margin-left:3px}
+.pl-host.pl-paused .pl-big{opacity:1; transform:none; pointer-events:auto}
+@media (hover:hover) and (pointer:fine){
+  .pl-big:hover{background:rgba(16,18,22,.82)}
+}
+.pl-big:active{transform:scale(.94)}
+
+/* Нижняя панель */
+.pl-bar{
+  position:absolute; left:0; right:0; bottom:0; z-index:4;
+  padding:0 var(--pl-pad) 8px;
+  opacity:0; transform:translateY(10px); pointer-events:none;
+  transition:opacity 190ms var(--ease-out), transform 190ms var(--ease-out);
+}
+.pl-host.pl-live .pl-bar{opacity:1; transform:none; pointer-events:auto}
+
+/* Полоса перемотки. Видимая высота 3px, но кликабельная зона 14px —
+   иначе в неё не попасть ни мышью, ни пальцем. */
+.pl-seek{
+  position:relative; height:14px; margin-bottom:2px; cursor:pointer;
+  display:flex; align-items:center;
+}
+.pl-seek::before{
+  content:''; position:absolute; left:0; right:0; height:3px; border-radius:2px;
+  background:rgba(255,255,255,.26); transition:height 120ms var(--ease-out);
+}
+.pl-buf,.pl-fill{
+  position:absolute; left:0; height:3px; border-radius:2px;
+  transition:height 120ms var(--ease-out);
+}
+.pl-buf{background:rgba(255,255,255,.34); width:0}
+.pl-fill{background:var(--accent); width:0}
+.pl-knob{
+  position:absolute; right:-6px; top:50%; width:12px; height:12px;
+  margin-top:-6px; border-radius:50%; background:var(--accent);
+  transform:scale(0); transition:transform 130ms var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .pl-seek:hover::before, .pl-seek:hover .pl-buf, .pl-seek:hover .pl-fill{height:5px}
+  .pl-seek:hover .pl-knob{transform:scale(1)}
+}
+.pl-seek:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:3px}
+.pl-seek:focus-visible .pl-knob{transform:scale(1)}
+
+.pl-row{display:flex; align-items:center; gap:2px; color:#fff}
+.pl-sp{flex:1 1 auto}
+
+.pl-b{
+  flex:0 0 auto; width:32px; height:32px; padding:0; cursor:pointer;
+  display:grid; place-items:center;
+  border:0; background:none; color:#fff; opacity:.88;
+  border-radius:8px;
+  transition:opacity 120ms ease, background 120ms ease, transform var(--t-press) var(--ease-out);
+}
+.pl-b svg{width:20px; height:20px; fill:currentColor}
+.pl-b[hidden]{display:none}
+@media (hover:hover) and (pointer:fine){
+  .pl-b:hover{opacity:1; background:rgba(255,255,255,.13)}
+}
+.pl-b:active{transform:scale(.9)}
+.pl-b:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+/* Включённые субтитры отмечаем чертой под кнопкой — как в YouTube */
+.pl-cc{position:relative}
+.pl-cc.on::after{
+  content:''; position:absolute; left:7px; right:7px; bottom:3px; height:2px;
+  border-radius:2px; background:var(--accent);
+}
+
+.pl-time{
+  flex:0 0 auto; margin:0 6px 0 2px; white-space:nowrap;
+  font-family:var(--mono); font-size:.72rem; color:rgba(255,255,255,.9);
+  font-variant-numeric:tabular-nums;
+}
+
+/* Громкость: ползунок выезжает по наведению, как в YouTube — в покое
+   панель остаётся короткой и не спорит с узким корпусом телефона. */
+.pl-vol{display:flex; align-items:center}
+.pl-range{
+  width:0; opacity:0; margin:0; padding:0; height:20px;
+  -webkit-appearance:none; appearance:none; background:none; cursor:pointer;
+  transition:width 180ms var(--ease-out), opacity 180ms var(--ease-out),
+             margin 180ms var(--ease-out);
+}
+@media (hover:hover) and (pointer:fine){
+  .pl-vol:hover .pl-range, .pl-range:focus-visible{width:56px; opacity:1; margin:0 6px 0 2px}
+}
+.pl-host.pl-narrow .pl-range{display:none}
+.pl-range::-webkit-slider-runnable-track{height:3px; border-radius:2px; background:rgba(255,255,255,.32)}
+.pl-range::-moz-range-track{height:3px; border-radius:2px; background:rgba(255,255,255,.32)}
+.pl-range::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none; width:11px; height:11px; margin-top:-4px;
+  border-radius:50%; background:#fff; border:0;
+}
+.pl-range::-moz-range-thumb{width:11px; height:11px; border-radius:50%; background:#fff; border:0}
+
+/* Меню субтитров: карточка в стиле YouTube — тёмная плашка со светлой
+   рамкой, выезжает снизу вверх и гаснет обратно. Ширина по содержимому,
+   но не шире корпуса телефона. */
+.pl-menu{
+  position:absolute; right:var(--pl-pad); bottom:52px; z-index:6;
+  min-width:132px; max-width:calc(100% - var(--pl-pad) * 2);
+  padding:5px; border-radius:12px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(20,22,26,.96);
+  box-shadow:0 12px 30px -12px rgba(0,0,0,.85);
+  opacity:0; transform:translateY(8px) scale(.96); transform-origin:100% 100%;
+  transition:opacity 170ms var(--ease-out), transform 170ms var(--ease-out);
+}
+.pl-menu[hidden]{display:none}
+.pl-host.pl-menu-on .pl-menu{opacity:1; transform:none}
+.pl-menu-h{
+  padding:5px 9px 6px; margin-bottom:3px;
+  border-bottom:1px solid rgba(255,255,255,.1);
+  font-size:.66rem; letter-spacing:.09em; text-transform:uppercase;
+  color:rgba(255,255,255,.5);
+}
+.pl-mi{
+  display:flex; align-items:center; gap:7px; width:100%; cursor:pointer;
+  padding:7px 9px; border:0; border-radius:8px; background:none;
+  color:rgba(255,255,255,.9); font-family:inherit; font-size:.82rem;
+  text-align:left;
+  transition:background 120ms ease;
+}
+@media (hover:hover) and (pointer:fine){ .pl-mi:hover{background:rgba(255,255,255,.11)} }
+.pl-mi:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+.pl-mi-c{flex:0 0 auto; width:14px; height:14px; opacity:0; color:var(--accent)}
+.pl-mi.on .pl-mi-c{opacity:1}
+.pl-mi.on{color:#fff}
+.pl-mi-c svg{width:14px; height:14px; display:block}
+.pl-mi-t{white-space:nowrap}
+
+/* Полноэкранный режим. Разворачивается КОНТЕЙНЕР экрана, а не <video> —
+   иначе Chrome на Android сам доворачивает телефон в альбом и оставляет
+   его перевёрнутым после выхода. Здесь снимаем всё, что было деталью
+   корпуса: пропорцию, скругления, блик, глазок камеры. */
+.pl-host:fullscreen{
+  width:100%; height:100%; aspect-ratio:auto; border-radius:0; background:#000;
+  --pl-pad:22px;
+}
+.pl-host:-webkit-full-screen{
+  width:100%; height:100%; border-radius:0; background:#000;
+}
+.pl-host:fullscreen video{
+  width:100%; height:100%; object-fit:contain; border-radius:0; background:#000;
+}
+.pl-host:-webkit-full-screen video{
+  width:100%; height:100%; object-fit:contain; border-radius:0; background:#000;
+}
+.pl-host:fullscreen .rv-island,
+.pl-host:fullscreen .rv-glare,
+.pl-host:fullscreen .lp-cam,
+.pl-host:fullscreen .lp-glare{display:none}
+.pl-host:fullscreen .pl-bar{padding-bottom:16px}
+.pl-host:fullscreen .pl-b{width:40px; height:40px}
+.pl-host:fullscreen .pl-b svg{width:24px; height:24px}
+.pl-host:fullscreen .pl-time{font-size:.85rem}
+.pl-host:fullscreen .pl-big{width:78px; height:78px; margin:-39px 0 0 -39px}
+.pl-host:fullscreen .pl-big svg{width:38px; height:38px}
+.pl-host:fullscreen .pl-menu{bottom:66px}
+
+/* Курсор прячем вместе с панелью — иначе стрелка висит поверх кадра */
+.pl-host:not(.pl-live):fullscreen{cursor:none}
+
+@media (prefers-reduced-motion: reduce){
+  .pl-shade,.pl-bar,.pl-big,.pl-menu,.pl-range,.pl-knob{transition:none}
+}
+
+.wg-list{display:grid; gap:8px; margin:22px 0 4px}
+.wg{border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--bg-2)}
+.wg-head{
+  display:flex; align-items:center; gap:10px; width:100%;
+  padding:12px 14px; background:transparent; border:0; cursor:pointer;
+  font:inherit; color:inherit; text-align:left;
+}
+.wg-title{font-weight:600; font-size:.95rem}
+.wg-count{
+  font-family:var(--mono); font-size:.66rem; letter-spacing:.06em;
+  color:var(--ink-3); border:1px solid var(--line-2); border-radius:5px; padding:2px 6px;
+}
+.wg-chev{
+  margin-left:auto; font-size:1.1rem; line-height:1; color:var(--ink-3);
+  transition:transform var(--t-hover) var(--ease-out), color var(--t-hover) ease;
+}
+.wg.is-open .wg-chev{transform:rotate(180deg); color:var(--accent)}
+@media (hover:hover) and (pointer:fine){
+  .wg-head:hover{background:var(--bg)}
+  .wg-head:hover .wg-chev{color:var(--accent)}
+}
+.wg-head:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+.wg-body{padding:0 14px 14px}
+.wg-note{margin:0 0 12px; font-size:.87rem; color:var(--ink-2)}
+/* Карточки прижаты к верху: у снимков разные подписи, и растянутые до одной
+   высоты ячейки оставляли бы под короткой подписью пустое поле. */
+.wg-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; align-items:start}
+.wg-shot{
+  display:grid; gap:6px; padding:0; border:0; background:transparent;
+  font:inherit; color:inherit; text-align:left; cursor:zoom-in;
+}
+/* contain, а не cover: среди снимков есть вертикальные (переписка с ботом,
+   карты на телефоне), и обрезка по 16:10 срезала бы у них ровно то, ради чего
+   снимок сделан. Поля вокруг — честная плата за целый кадр. */
+.wg-shot img{
+  width:100%; aspect-ratio:16/10; object-fit:contain; padding:6px;
+  border-radius:8px; border:1px solid var(--line); background:var(--bg);
+  transition:transform 260ms var(--ease-out), border-color var(--t-hover) ease;
+}
+@media (hover:hover) and (pointer:fine){
+  .wg-shot:hover img{transform:scale(1.02); border-color:var(--accent)}
+}
+.wg-shot:focus-visible img{outline:2px solid var(--accent); outline-offset:2px}
+.wg-cap{font-size:.76rem; line-height:1.35; color:var(--ink-3)}
+
+/* ── ПРОСМОТР СКРИНШОТА ───────────────────────────────────────────────────
+   Слой поверх всего, включая модалку кейса. Размытия нет намеренно: снимок
+   и так занимает почти весь экран, а blur на всю площадь композитор считает
+   заново на каждом кадре зума. */
+.lbox{position:fixed; inset:0; z-index:200; display:grid; place-items:center}
+.lbox[hidden]{display:none}
+.lbox-back{position:absolute; inset:0; background:rgba(6,8,10,.94)}
+.lbox-stage{
+  position:relative; width:100%; height:100%;
+  display:grid; place-items:center; overflow:hidden;
+  touch-action:none;              /* иначе жест забирает браузер, и пинч мёртв */
+  opacity:0; transition:opacity var(--t-modal) var(--ease-out);
+}
+.lbox.is-open .lbox-stage{opacity:1}
+.lbox-img{
+  max-width:94vw; max-height:86vh; border-radius:6px;
+  box-shadow:0 20px 60px -20px rgba(0,0,0,.8);
+  user-select:none; -webkit-user-drag:none;
+  transition:transform 90ms linear; will-change:transform;
+  cursor:zoom-in;
+}
+.lbox-img.is-zoomed{cursor:grab}
+.lbox-x, .lbox-nav{
+  position:absolute; z-index:2; display:grid; place-items:center;
+  color:#fff; background:rgba(20,22,26,.6); border:1px solid rgba(255,255,255,.22);
+  border-radius:10px; cursor:pointer; line-height:1;
+  transition:background var(--t-hover) ease, border-color var(--t-hover) ease;
+}
+@media (hover:hover) and (pointer:fine){
+  .lbox-x:hover, .lbox-nav:hover{background:rgba(30,34,40,.9); border-color:rgba(255,255,255,.4)}
+}
+.lbox-x{top:16px; right:18px; width:40px; height:40px; font-size:1rem}
+.lbox-nav{top:50%; transform:translateY(-50%); width:42px; height:56px; font-size:1.7rem}
+.lbox-prev{left:14px}
+.lbox-next{right:14px}
+.lbox-bar{
+  position:absolute; left:50%; bottom:16px; transform:translateX(-50%); z-index:2;
+  display:grid; gap:4px; justify-items:center; max-width:min(760px, 92vw);
+  text-align:center; pointer-events:none;
+}
+.lbox-cap{color:#fff; font-size:.86rem; line-height:1.4}
+.lbox-hint{color:rgba(255,255,255,.5); font-size:.72rem}
+@media (max-width:640px){
+  .lbox-nav{width:36px; height:48px; font-size:1.4rem}
+  .lbox-hint{display:none}      /* колеса и двойного клика на телефоне нет */
+}
+@media (prefers-reduced-motion: reduce){
+  .lbox-stage, .lbox-img{transition:none}
+}
+
+@media (min-width:900px) and (max-height:820px){
+  .hero{padding-top:clamp(28px,4vh,56px); padding-bottom:clamp(28px,4vh,56px)}
+  .hero h1{margin-bottom:10px; line-height:1.04}
+  .hero .role{margin-bottom:10px}
+  .hero .tagline{margin-bottom:14px}
+  .hero .claim{margin:14px 0; padding-top:14px}
+  .hero-cta{margin-top:18px}
+}
+
+/* Почта первого экрана: тот же вес, что и подпись под кнопками, но кликабельна */
+/* ВНИМАНИЕ: display у собственного класса перебивает браузерное правило
+   [hidden]{display:none} — элемент остаётся видимым вопреки атрибуту.
+   Поэтому селектор сужен до :not([hidden]). Ровно на этом сайт показывал
+   почту на русской версии, где её быть не должно. */
+.hero-mail:not([hidden]){display:block}
+.hero-mail{color:var(--ink-2); text-decoration:none;
+  border-bottom:1px solid var(--line); width:fit-content}
+.hero-mail:hover{color:var(--ink); border-bottom-color:currentColor}
